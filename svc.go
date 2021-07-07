@@ -127,7 +127,7 @@ func (as *autoNATService) handleDial(p peer.ID, obsaddr ma.Multiaddr, mpi *pb.Me
 		}
 
 		if as.config.dialPolicy.skipDial(addr) {
-			err, newobsaddr := patchObsaddr(addr, obsaddr)
+			newobsaddr, err := patchObsaddr(addr, obsaddr)
 			if err == nil {
 				addr = newobsaddr
 			} else {
@@ -270,7 +270,7 @@ func patchObsaddr(localaddr, obsaddr ma.Multiaddr) (ma.Multiaddr, error) {
 			switch c.Protocol().Code {
 			case ma.P_UDP, ma.P_TCP:
 				if code == c.Protocol().Code && isObsValid { //obsaddr has the same type protocol, and we can replace it.
-					if !bytes.Compare(rawport, c.RawValue()) {
+					if bytes.Compare(rawport, c.RawValue()) != 0 {
 						buffer.Write(obsbytes[:obsoffset])
 						buffer.Write(newc.Bytes())
 						tail := obsoffset + len(c.Bytes())
