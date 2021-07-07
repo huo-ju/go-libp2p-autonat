@@ -239,9 +239,9 @@ func (as *autoNATService) background(ctx context.Context) {
 }
 
 // patchObsaddr replaces obsaddr's port number with the port number of `localaddr`
-func patchObsaddr(localaddr, obsaddr ma.Multiaddr) (error, ma.Multiaddr) {
+func patchObsaddr(localaddr, obsaddr ma.Multiaddr) (ma.Multiaddr, error) {
 	if localaddr == nil || obsaddr == nil {
-		return errors.New("localaddr and obsaddr can't be nil"), nil
+		return nil, errors.New("localaddr and obsaddr can't be nil")
 	}
 	var rawport []byte
 	var code int
@@ -260,7 +260,7 @@ func patchObsaddr(localaddr, obsaddr ma.Multiaddr) (error, ma.Multiaddr) {
 		return true
 	})
 
-	if isValid == true && len(rawport) > 0 {
+	if isValid && len(rawport) > 0 {
 		obsbytes := obsaddr.Bytes()
 		obsoffset := 0
 		isObsValid := false
@@ -269,8 +269,8 @@ func patchObsaddr(localaddr, obsaddr ma.Multiaddr) (error, ma.Multiaddr) {
 		ma.ForEach(obsaddr, func(c ma.Component) bool {
 			switch c.Protocol().Code {
 			case ma.P_UDP, ma.P_TCP:
-				if code == c.Protocol().Code && isObsValid == true { //obsaddr has the same type protocol, and we can replace it.
-					if bytes.Compare(rawport, c.RawValue()) != 0 {
+				if code == c.Protocol().Code && isObsValid { //obsaddr has the same type protocol, and we can replace it.
+					if !bytes.Compare(rawport, c.RawValue()) {
 						buffer.Write(obsbytes[:obsoffset])
 						buffer.Write(newc.Bytes())
 						tail := obsoffset + len(c.Bytes())
@@ -287,11 +287,10 @@ func patchObsaddr(localaddr, obsaddr ma.Multiaddr) (error, ma.Multiaddr) {
 			obsoffset += len(c.Bytes())
 			return true
 		})
-		if isReplaced == true {
+		if isReplaced {
 			newobsaddr, err := ma.NewMultiaddrBytes(buffer.Bytes())
-			return err, newobsaddr
+			return newobsaddr, err
 		}
 	}
-
-	return errors.New("only same protocol address can be patched."), nil
+	return nil, errors.New("only same protocol address can be patched.")
 }
